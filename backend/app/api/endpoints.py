@@ -13,7 +13,7 @@ from app.schemas.schemas import (
     RouteRequest, RouteResponse,
     ExecutiveSummaryReport
 )
-from app.services.simulation import stadium_sim
+from app.services.simulation import stadium_sim, ALL_NODES
 from app.services.route_engine import RouteEngine
 from app.services.gemini_service import GeminiService
 
@@ -55,6 +55,8 @@ async def get_incidents(
     """
     query = select(Incident)
     if status:
+        if status not in ("active", "resolved", "resolving", "reported"):
+            raise HTTPException(status_code=400, detail="Invalid incident status value")
         query = query.where(Incident.status == status)
     
     query = query.order_by(Incident.created_at.desc())
@@ -70,9 +72,19 @@ async def create_incident(
     Manual reporting of a security or medical incident.
     Triggers immediate AI action planning using Gemini.
     """
-    # If the action plan is not provided, trigger Gemini to generate it
+    if incident_in.zone not in ALL_NODES:
+        raise HTTPException(status_code=400, detail=f"Invalid zone location: {incident_in.zone}")
+    
+    if incident_in.type not in ("medical", "fire", "gate_blockage", "stampede", "power_outage", "suspicious_movement"):
+        raise HTTPException(status_code=400, detail=f"Invalid incident type: {incident_in.type}")
+        
+    if incident_in.severity not in ("low", "medium", "high", "critical"):
+        raise HTTPException(status_code=400, detail=f"Invalid severity value: {incident_in.severity}")
+
     action_plan = incident_in.action_plan
-    if not action_plan:
+    if action_plan:
+        action_plan = [step.model_dump() if hasattr(step, "model_dump") else step for step in action_plan]
+    else:
         steps = gemini.generate_incident_response(
             zone=incident_in.zone,
             incident_type=incident_in.type,
@@ -139,6 +151,8 @@ async def get_crowd_predictions(
     Generate crowd density predictions for 5, 10, 20, 30 minute horizons.
     Uses Gemini API to forecast queue changes and recommended dispatch actions.
     """
+    if zone not in ALL_NODES:
+        raise HTTPException(status_code=400, detail=f"Invalid zone: {zone}")
     # Fetch active incidents to provide context to predictive AI
     stmt = select(Incident).where(Incident.status == "active")
     result = await db.execute(stmt)
@@ -169,6 +183,8 @@ async def ask_copilot(
     Operations Command Decision Copilot. Ask questions about stadium logistics,
     safety risks, resource planning, and evacuation routing.
     """
+    if not request.query or not request.query.strip():
+        raise HTTPException(status_code=400, detail="Query text cannot be empty")
     # Fetch active incidents
     stmt = select(Incident).where(Incident.status == "active")
     result = await db.execute(stmt)
@@ -218,6 +234,10 @@ async def calculate_route(
     Calculates safety-optimized routes avoiding incidents and high-density bottlenecks.
     Supports accessibility parameters and emergency responder tunnels.
     """
+    if request.start_node not in ALL_NODES:
+        raise HTTPException(status_code=400, detail=f"Invalid starting node: {request.start_node}")
+    if request.end_node not in ALL_NODES:
+        raise HTTPException(status_code=400, detail=f"Invalid destination node: {request.end_node}")
     # Fetch active incidents
     stmt = select(Incident).where(Incident.status == "active")
     result = await db.execute(stmt)

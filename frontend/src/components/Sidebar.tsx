@@ -9,7 +9,6 @@ import {
   LineChart, 
   AlertOctagon, 
   BarChart3, 
-  Settings, 
   ShieldAlert, 
   Home
 } from 'lucide-react';

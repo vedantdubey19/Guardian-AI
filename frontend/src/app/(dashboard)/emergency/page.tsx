@@ -7,13 +7,11 @@ import { Incident, ActionPlanStep } from '../../../types';
 import { 
   AlertTriangle, 
   Plus, 
-  MapPin, 
   Route, 
   Check, 
   Accessibility, 
   Shield, 
   ListOrdered,
-  Eye,
   Activity,
   FileSpreadsheet
 } from 'lucide-react';
@@ -49,7 +47,7 @@ export default function EmergencyRoom() {
   } | null>(null);
 
   // Load all incidents on load
-  const loadIncidents = async () => {
+  const loadIncidents = React.useCallback(async () => {
     try {
       const data = await api.getIncidents();
       setIncidents(data);
@@ -61,11 +59,14 @@ export default function EmergencyRoom() {
     } catch (err) {
       console.error('Failed to load incidents list:', err);
     }
-  };
+  }, [selectedIncident]);
 
   useEffect(() => {
-    loadIncidents();
-  }, [activeIncidents]);
+    const timer = setTimeout(() => {
+      loadIncidents();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeIncidents, loadIncidents]);
 
   // Handle reporting a new incident
   const handleReportIncident = async (e: React.FormEvent) => {
@@ -164,6 +165,8 @@ export default function EmergencyRoom() {
         {/* Toggle Report Form Button */}
         <button
           onClick={() => setShowAddForm(!showAddForm)}
+          aria-expanded={showAddForm}
+          aria-controls="safety-hazard-form"
           className={`w-full py-3 rounded-xl font-bold text-xs tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
             showAddForm 
               ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60' 
@@ -177,6 +180,7 @@ export default function EmergencyRoom() {
         {/* Report Form Container */}
         {showAddForm ? (
           <form
+            id="safety-hazard-form"
             onSubmit={handleReportIncident}
             className="glass-panel p-5 rounded-2xl border-slate-800/60 flex flex-col gap-3 shrink-0"
           >
@@ -187,8 +191,9 @@ export default function EmergencyRoom() {
             
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex flex-col gap-1">
-                <span className="text-[9px] uppercase font-bold text-slate-500">Zone</span>
+                <label htmlFor="formZone" className="text-[9px] uppercase font-bold text-slate-500">Zone</label>
                 <select
+                  id="formZone"
                   value={formZone}
                   onChange={(e) => setFormZone(e.target.value)}
                   className="bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none"
@@ -198,8 +203,9 @@ export default function EmergencyRoom() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <span className="text-[9px] uppercase font-bold text-slate-500">Type</span>
+                <label htmlFor="formType" className="text-[9px] uppercase font-bold text-slate-500">Type</label>
                 <select
+                  id="formType"
                   value={formType}
                   onChange={(e) => setFormType(e.target.value)}
                   className="bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none capitalize"
@@ -212,8 +218,9 @@ export default function EmergencyRoom() {
             </div>
 
             <div className="flex flex-col gap-1 text-xs">
-              <span className="text-[9px] uppercase font-bold text-slate-500">Severity</span>
+              <label htmlFor="formSeverity" className="text-[9px] uppercase font-bold text-slate-500">Severity</label>
               <select
+                id="formSeverity"
                 value={formSeverity}
                 onChange={(e) => setFormSeverity(e.target.value)}
                 className="bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none capitalize"
@@ -223,8 +230,9 @@ export default function EmergencyRoom() {
             </div>
 
             <div className="flex flex-col gap-1 text-xs">
-              <span className="text-[9px] uppercase font-bold text-slate-500">Description</span>
+              <label htmlFor="formDescription" className="text-[9px] uppercase font-bold text-slate-500">Description</label>
               <textarea
+                id="formDescription"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 placeholder="Describe current spectator emergency or hardware failure..."
@@ -268,7 +276,18 @@ export default function EmergencyRoom() {
                       setRouteResult(null); // Clear previous route calculations
                       setActiveRoute([]);
                     }}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer text-xs relative flex flex-col gap-1.5 ${
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedIncident(inc);
+                        setRouteResult(null);
+                        setActiveRoute([]);
+                      }
+                    }}
+                    aria-label={`Incident: ${inc.type.replace('_', ' ')}, Severity: ${inc.severity}, Zone: ${inc.zone}, Status: ${inc.status}`}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer text-xs relative flex flex-col gap-1.5 focus:outline-none focus:ring-1 focus:ring-cyan-500/35 ${
                       isSelected 
                         ? 'bg-slate-900/90 border-[#00f2fe]/40 shadow-md shadow-[#00f2fe]/5'
                         : 'bg-slate-900/30 border-slate-800 hover:bg-slate-900/60'
@@ -397,8 +416,9 @@ export default function EmergencyRoom() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end text-xs">
                 {/* Selector */}
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-[9px] uppercase font-extrabold text-slate-500">Starting Location</span>
+                  <label htmlFor="routeStart" className="text-[9px] uppercase font-extrabold text-slate-500">Starting Location</label>
                   <select
+                    id="routeStart"
                     value={routeStart}
                     onChange={(e) => setRouteStart(e.target.value)}
                     className="bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500/35 transition-all font-semibold"
@@ -415,8 +435,9 @@ export default function EmergencyRoom() {
 
                 {/* Toggles */}
                 <div className="flex gap-4 p-2 select-none">
-                  <label className="flex items-center gap-2 cursor-pointer text-[10px] font-bold uppercase text-slate-300">
+                  <label htmlFor="accessibilityRequired" className="flex items-center gap-2 cursor-pointer text-[10px] font-bold uppercase text-slate-300">
                     <input
+                      id="accessibilityRequired"
                       type="checkbox"
                       checked={accessibilityRequired}
                       onChange={(e) => setAccessibilityRequired(e.target.checked)}
@@ -426,8 +447,9 @@ export default function EmergencyRoom() {
                     <span>Wheelchair Ramps</span>
                   </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer text-[10px] font-bold uppercase text-slate-300">
+                  <label htmlFor="emergencyVehicle" className="flex items-center gap-2 cursor-pointer text-[10px] font-bold uppercase text-slate-300">
                     <input
+                      id="emergencyVehicle"
                       type="checkbox"
                       checked={emergencyVehicle}
                       onChange={(e) => setEmergencyVehicle(e.target.checked)}

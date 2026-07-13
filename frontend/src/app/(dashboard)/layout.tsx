@@ -50,16 +50,24 @@ export default function DashboardLayout({
 
   // Poll active incidents list occasionally in case WebSockets drop
   useEffect(() => {
-    refreshIncidents();
+    const timer = setTimeout(() => {
+      refreshIncidents();
+    }, 0);
     const interval = setInterval(refreshIncidents, 8000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [refreshIncidents]);
 
   // Sync incident updates coming from WebSockets
   useEffect(() => {
     if (telemetry) {
       // Periodic synchronization - WebSockets push also triggers list refresh
-      refreshIncidents();
+      const timer = setTimeout(() => {
+        refreshIncidents();
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [telemetry, refreshIncidents]);
 

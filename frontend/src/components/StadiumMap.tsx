@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Shield, Activity, Accessibility, AlertTriangle } from 'lucide-react';
+import { Shield, Activity, AlertTriangle } from 'lucide-react';
 import { Incident } from '../types';
 
 // Map coordinates mapping node name -> SVG x,y center positions
@@ -112,6 +112,7 @@ export const StadiumMap: React.FC<StadiumMapProps> = ({
   onNodeClick,
 }) => {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [focusedNode, setFocusedNode] = useState<string | null>(null);
 
   // Helper to resolve color class based on density level
   const getDensityColor = (density: number = 0) => {
@@ -210,7 +211,7 @@ export const StadiumMap: React.FC<StadiumMapProps> = ({
         {Object.entries(MAP_NODES).map(([nodeName, node]) => {
           const density = densities[nodeName] || 0.15;
           const isSelected = selectedNode === nodeName;
-          const isHovered = hoveredNode === nodeName;
+          const isHovered = hoveredNode === nodeName || focusedNode === nodeName;
           const isRoute = activeRoutePath.includes(nodeName);
           const color = getDensityColor(density);
           const activeInc = activeIncidents.find((inc) => inc.zone === nodeName && inc.status !== 'resolved');
@@ -227,7 +228,19 @@ export const StadiumMap: React.FC<StadiumMapProps> = ({
                 }}
                 onMouseEnter={() => setHoveredNode(nodeName)}
                 onMouseLeave={() => setHoveredNode(null)}
-                className="cursor-pointer"
+                onFocus={() => setFocusedNode(nodeName)}
+                onBlur={() => setFocusedNode(null)}
+                className="cursor-pointer focus:outline-none"
+                role="button"
+                tabIndex={0}
+                aria-label={`${node.label}, Occupants: ${(counts[nodeName] || 1200).toLocaleString()} people, Density: ${Math.round(density * 100)}%`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onNodeClick) onNodeClick(nodeName);
+                  }
+                }}
               >
                 <circle
                   cx={node.x}
@@ -271,7 +284,19 @@ export const StadiumMap: React.FC<StadiumMapProps> = ({
                 }}
                 onMouseEnter={() => setHoveredNode(nodeName)}
                 onMouseLeave={() => setHoveredNode(null)}
-                className="cursor-pointer"
+                onFocus={() => setFocusedNode(nodeName)}
+                onBlur={() => setFocusedNode(null)}
+                className="cursor-pointer focus:outline-none"
+                role="button"
+                tabIndex={0}
+                aria-label={`${node.label}, Occupants: ${(counts[nodeName] || 1200).toLocaleString()} people, Density: ${Math.round(density * 100)}%`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onNodeClick) onNodeClick(nodeName);
+                  }
+                }}
               >
                 <circle
                   cx={node.x}
@@ -304,7 +329,19 @@ export const StadiumMap: React.FC<StadiumMapProps> = ({
                 }}
                 onMouseEnter={() => setHoveredNode(nodeName)}
                 onMouseLeave={() => setHoveredNode(null)}
-                className="cursor-pointer"
+                onFocus={() => setFocusedNode(nodeName)}
+                onBlur={() => setFocusedNode(null)}
+                className="cursor-pointer focus:outline-none"
+                role="button"
+                tabIndex={0}
+                aria-label={`${node.label}, Occupants: ${(counts[nodeName] || 1200).toLocaleString()} people, Density: ${Math.round(density * 100)}%`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onNodeClick) onNodeClick(nodeName);
+                  }
+                }}
               >
                 <rect
                   x={node.x - 14}

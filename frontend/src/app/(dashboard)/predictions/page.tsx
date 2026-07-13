@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from '../layout';
 import { api } from '../../../services/api';
-import { CrowdPredictionResponse, PredictionItem } from '../../../types';
+import { CrowdPredictionResponse } from '../../../types';
 import { 
   LineChart, 
   Line, 
@@ -17,10 +17,9 @@ import {
   LineChart as LineIcon, 
   AlertCircle, 
   Calendar, 
-  CheckCircle,
-  HelpCircle,
-  Sparkles,
-  TrendingUp,
+  HelpCircle, 
+  Sparkles, 
+  TrendingUp, 
   ShieldCheck
 } from 'lucide-react';
 
@@ -36,7 +35,8 @@ export default function PredictionCenter() {
   const [mounted, setMounted] = useState<boolean>(false);
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Fetch prediction details when active zone changes
@@ -47,9 +47,10 @@ export default function PredictionCenter() {
       try {
         const data = await api.getCrowdPredictions(activeZone);
         setPredictionData(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : 'Failed to load predictive telemetry.';
         console.error('Prediction fetch error:', err);
-        setError(err.message || 'Failed to load predictive telemetry.');
+        setError(errMsg);
       } finally {
         setLoading(false);
       }
@@ -89,8 +90,9 @@ export default function PredictionCenter() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Sector:</span>
+          <label htmlFor="activeZone" className="text-[10px] font-bold text-slate-400 uppercase">Sector:</label>
           <select
+            id="activeZone"
             value={activeZone}
             onChange={(e) => setSelectedNode(e.target.value)}
             className="bg-slate-900 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none transition-all font-semibold"

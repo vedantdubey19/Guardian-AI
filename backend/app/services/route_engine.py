@@ -92,20 +92,22 @@ EMERGENCY_TUNNELS = {
     "Gate G": [("Zone C", 60, True, True)]
 }
 
-# Combine graphs during initialization
+# Precompute graphs during initialization
+STANDARD_GRAPH_PRECOMPUTED = {node: list(edges) for node, edges in STADIUM_GRAPH.items()}
+
+EMERGENCY_GRAPH_PRECOMPUTED = {node: list(edges) for node, edges in STADIUM_GRAPH.items()}
+for start, edges in EMERGENCY_TUNNELS.items():
+    if start not in EMERGENCY_GRAPH_PRECOMPUTED:
+        EMERGENCY_GRAPH_PRECOMPUTED[start] = []
+    for dest, base_time, is_acc, is_em in edges:
+        EMERGENCY_GRAPH_PRECOMPUTED[start].append((dest, base_time, is_acc, is_em))
+        # Add back-edge
+        if dest not in EMERGENCY_GRAPH_PRECOMPUTED:
+            EMERGENCY_GRAPH_PRECOMPUTED[dest] = []
+        EMERGENCY_GRAPH_PRECOMPUTED[dest].append((start, base_time, is_acc, is_em))
+
 def get_graph(emergency_vehicle: bool = False) -> Dict[str, List[Tuple[str, float, bool, bool]]]:
-    graph = {node: list(edges) for node, edges in STADIUM_GRAPH.items()}
-    if emergency_vehicle:
-        for start, edges in EMERGENCY_TUNNELS.items():
-            if start not in graph:
-                graph[start] = []
-            for dest, base_time, is_acc, is_em in edges:
-                graph[start].append((dest, base_time, is_acc, is_em))
-                # Add back-edge
-                if dest not in graph:
-                    graph[dest] = []
-                graph[dest].append((start, base_time, is_acc, is_em))
-    return graph
+    return EMERGENCY_GRAPH_PRECOMPUTED if emergency_vehicle else STANDARD_GRAPH_PRECOMPUTED
 
 class RouteEngine:
     @staticmethod

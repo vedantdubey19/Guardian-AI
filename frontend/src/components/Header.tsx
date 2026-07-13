@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ShieldCheck, ShieldAlert, Clock, AlertTriangle, Play, Settings } from 'lucide-react';
-import { LiveTelemetry, Incident } from '../types';
+import { ShieldCheck, ShieldAlert, Clock, AlertTriangle, Play } from 'lucide-react';
+import { LiveTelemetry } from '../types';
 
 interface HeaderProps {
   telemetry: LiveTelemetry | null;

@@ -25,7 +25,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
     try {
       const errData = await response.json();
       errorDetail = errData.detail || errorDetail;
-    } catch (_) {}
+    } catch {
+      // Ignore body parsing failures
+    }
     throw new Error(errorDetail);
   }
   return response.json() as Promise<T>;

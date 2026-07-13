@@ -22,7 +22,6 @@ import {
   ShieldAlert, 
   Timer, 
   PieChart as PieIcon,
-  Activity,
   Calendar
 } from 'lucide-react';
 
@@ -30,7 +29,8 @@ export default function AnalyticsDashboard() {
   const [mounted, setMounted] = useState<boolean>(false);
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // 1. Crowd Density Trends (Area Chart)

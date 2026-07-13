@@ -29,7 +29,7 @@ export default function CommandCenter() {
   const [loadingReport, setLoadingReport] = useState<boolean>(false);
 
   // Fetch the latest executive situation report
-  const fetchSituationReport = async () => {
+  const fetchSituationReport = React.useCallback(async () => {
     setLoadingReport(true);
     try {
       const report = await api.getSituationReport();
@@ -39,14 +39,19 @@ export default function CommandCenter() {
     } finally {
       setLoadingReport(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchSituationReport();
+    const timer = setTimeout(() => {
+      fetchSituationReport();
+    }, 0);
     // Refresh report every 15 seconds to reflect simulated shifts
     const interval = setInterval(fetchSituationReport, 15000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [fetchSituationReport]);
 
   const totalOccupants = telemetry?.total_visitors ?? 24500;
   const overallRisk = telemetry?.overall_risk_score ?? 12.5;
@@ -83,7 +88,7 @@ ${sitRep.predicted_issues_summary}
 ${sitRep.priority_ranking.map((zone, idx) => `  [${idx + 1}] ${zone}`).join('\n')}
 
 5. AI RECOMMENDED ACTIONS:
-${sitRep.recommended_actions.map((act, idx) => `  - ${act}`).join('\n')}
+${sitRep.recommended_actions.map((act) => `  - ${act}`).join('\n')}
 
 --------------------------------------------------
 System Operations Health: ${systemHealth.toUpperCase()}

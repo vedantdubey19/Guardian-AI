@@ -9,6 +9,7 @@ export const useWebSocket = (url?: string) => {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectDelayRef = useRef<number>(1000);
+  const connectRef = useRef<() => void>(() => {});
 
   const getWsUrl = useCallback(() => {
     if (url) return url;
@@ -23,6 +24,19 @@ export const useWebSocket = (url?: string) => {
     }
     return 'ws://localhost:8000/api/ws';
   }, [url]);
+
+  const scheduleReconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) return;
+    
+    const delay = reconnectDelayRef.current;
+    console.log(`Scheduling reconnection in ${delay}ms...`);
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectTimeoutRef.current = null;
+      reconnectDelayRef.current = Math.min(delay * 2, 30000); // Exponential backoff max 30s
+      connectRef.current();
+    }, delay);
+  }, []);
 
   const connect = useCallback(() => {
     const wsUrl = getWsUrl();
@@ -52,7 +66,12 @@ export const useWebSocket = (url?: string) => {
             return;
           }
           
-          setTelemetry(data as LiveTelemetry);
+          setTelemetry((prev) => {
+            if (prev && prev.simulation_time === data.simulation_time && prev.overall_risk_score === data.overall_risk_score) {
+              return prev; // Avoid triggering re-render if identical state
+            }
+            return data as LiveTelemetry;
+          });
         } catch (err) {
           console.warn('Error parsing WebSocket message content:', err);
         }
@@ -78,25 +97,20 @@ export const useWebSocket = (url?: string) => {
       setError('Failed to initialize connection.');
       scheduleReconnect();
     }
-  }, [getWsUrl]);
+  }, [getWsUrl, scheduleReconnect]);
 
-  const scheduleReconnect = () => {
-    if (reconnectTimeoutRef.current) return;
-    
-    const delay = reconnectDelayRef.current;
-    console.log(`Scheduling reconnection in ${delay}ms...`);
-    
-    reconnectTimeoutRef.current = setTimeout(() => {
-      reconnectTimeoutRef.current = null;
-      reconnectDelayRef.current = Math.min(delay * 2, 30000); // Exponential backoff max 30s
-      connect();
-    }, delay);
-  };
+  // Keep connectRef synced to break circular dependencies
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
-    connect();
+    const timer = setTimeout(() => {
+      connect();
+    }, 0);
 
     return () => {
+      clearTimeout(timer);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -106,7 +120,7 @@ export const useWebSocket = (url?: string) => {
     };
   }, [connect]);
 
-  const send = useCallback((message: any) => {
+  const send = useCallback((message: unknown) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(typeof message === 'string' ? message : JSON.stringify(message));
       return true;

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useDashboard } from '../layout';
 import { api } from '../../../services/api';
-import { CopilotMessage, CopilotResponse } from '../../../types';
+import { CopilotMessage } from '../../../types';
 import { 
   Bot, 
   Send, 
@@ -29,6 +29,7 @@ export default function DecisionCopilot() {
   const [inputValue, setInputValue] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const messageIdRef = useRef<number>(0);
 
   const suggestedQueries = [
     "Explain today's risks.",
@@ -44,12 +45,15 @@ export default function DecisionCopilot() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  const handleSend = async (queryText: string) => {
+  const handleSend = useCallback(async (queryText: string) => {
     if (!queryText.trim() || loading) return;
+
+    messageIdRef.current += 1;
+    const userMsgId = `msg-${messageIdRef.current}`;
 
     // Add user message
     const userMsg: CopilotMessage = {
-      id: `msg-${Date.now()}`,
+      id: userMsgId,
       role: 'user',
       content: queryText,
       timestamp: new Date()
@@ -70,29 +74,37 @@ export default function DecisionCopilot() {
       // Call API
       const result = await api.askCopilot(queryText, chatHistory);
 
+      messageIdRef.current += 1;
+      const aiMsgId = `msg-ai-${messageIdRef.current}`;
+
       // Add AI Response
       const aiMsg: CopilotMessage = {
-        id: `msg-ai-${Date.now()}`,
+        id: aiMsgId,
         role: 'assistant',
         content: result.answer,
         timestamp: new Date(),
         details: result
       };
       setMessages(prev => [...prev, aiMsg]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Copilot query error:', err);
+      const errMsgText = err instanceof Error ? err.message : 'Unable to retrieve AI analysis. Check backend server and API keys.';
+      
+      messageIdRef.current += 1;
+      const errMsgId = `msg-err-${messageIdRef.current}`;
+
       // Add error response
       const errMsg: CopilotMessage = {
-        id: `msg-err-${Date.now()}`,
+        id: errMsgId,
         role: 'assistant',
-        content: `Error: ${err.message || 'Unable to retrieve AI analysis. Check backend server and API keys.'}`,
+        content: `Error: ${errMsgText}`,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errMsg]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [messages, loading]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-140px)] items-stretch">
@@ -148,7 +160,7 @@ export default function DecisionCopilot() {
               <span className="text-[9px] uppercase font-bold text-slate-500">High Congestion sectors</span>
               <div className="space-y-1">
                 {Object.entries(telemetry?.densities ?? {})
-                  .filter(([_, d]) => d > 0.7)
+                  .filter(([, d]) => d > 0.7)
                   .map(([zone, d]) => (
                     <div key={zone} className="flex justify-between items-center text-[11px] bg-red-950/20 px-2.5 py-1 rounded border border-red-500/20 text-rose-300">
                       <span>{zone}</span>
@@ -181,7 +193,7 @@ export default function DecisionCopilot() {
         </div>
 
         {/* Chat History Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6" aria-live="polite">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -276,7 +288,7 @@ export default function DecisionCopilot() {
 
           {/* Typing Loading Indicator */}
           {loading && (
-            <div className="flex gap-4 items-start justify-start">
+            <div className="flex gap-4 items-start justify-start" aria-live="assertive">
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-[#00f2fe] shrink-0">
                 <Bot className="w-4 h-4 animate-bounce" />
               </div>
@@ -298,12 +310,15 @@ export default function DecisionCopilot() {
           }}
           className="p-4 border-t border-slate-800/60 bg-slate-950/80 flex gap-2.5 items-center shrink-0"
         >
+          <label htmlFor="chatInput" className="sr-only">Ask Copilot</label>
           <input
+            id="chatInput"
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Ask Copilot: 'Why is Gate C crowded?' or 'Safest route to Gate H'..."
             disabled={loading}
+            aria-label="Operations Copilot Query"
             className="flex-1 bg-slate-900/70 border border-slate-800/80 focus:border-cyan-500/50 rounded-xl px-4 py-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-all font-medium"
           />
           <button
