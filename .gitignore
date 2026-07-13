@@ -1,0 +1,29 @@
+# Local environment variables (Contains API keys and passwords)
+.env
+.env.local
+.env.*
+
+# Python Virtual Environment
+backend/venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Node Dependencies & Build Artifacts
+frontend/node_modules/
+frontend/.next/
+node_modules/
+.next/
+dist/
+build/
+
+# Local Database
+*.db
+backend/*.db
+
+# OS Files
+.DS_Store
+Thumbs.db

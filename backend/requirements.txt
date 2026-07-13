@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+sqlalchemy
+asyncpg
+aiosqlite
+google-generativeai
+websockets
+httpx
+pytest
+pytest-asyncio
+greenlet
