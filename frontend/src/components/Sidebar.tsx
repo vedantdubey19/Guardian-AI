@@ -31,7 +31,7 @@ export const Sidebar: React.FC = () => {
       <div className="flex flex-col gap-1.5 px-2">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <ShieldAlert className="w-4.5 h-4.5 text-white" />
+            <ShieldAlert className="w-4.5 h-4.5 text-white" aria-hidden="true" />
           </div>
           <div>
             <h1 className="font-extrabold text-sm tracking-tight text-white">GUARDIAN AI</h1>
@@ -50,6 +50,7 @@ export const Sidebar: React.FC = () => {
             <Link
               key={item.path}
               href={item.path}
+              aria-current={isActive ? "page" : undefined}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 group relative ${
                 isActive 
                   ? 'bg-gradient-to-r from-blue-600/20 to-cyan-500/10 text-white border border-blue-500/30' 
@@ -63,7 +64,7 @@ export const Sidebar: React.FC = () => {
               
               <Icon className={`w-4 h-4 transition-colors ${
                 isActive ? 'text-[#00f2fe]' : 'text-slate-400 group-hover:text-slate-200'
-              }`} />
+              }`} aria-hidden="true" />
               
               <span>{item.name}</span>
             </Link>

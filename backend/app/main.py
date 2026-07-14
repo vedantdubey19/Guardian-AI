@@ -9,6 +9,9 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.services.simulation import run_simulation_loop
 from app.api.endpoints import router as api_router
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.core.limiter import limiter
 
 # Configure Logger
 logging.basicConfig(
@@ -54,6 +57,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Policy - restrict origins in production
 allowed_origins = [
@@ -71,8 +76,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
 )
 
 # Register Endpoints
@@ -83,4 +88,5 @@ def health_check():
     return {"status": "healthy", "service": "guardian-ai-api"}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host=settings.HOST, port=settings.BACKEND_PORT, reload=True)
+    should_reload = settings.ENVIRONMENT == "dev"
+    uvicorn.run("app.main:app", host=settings.HOST, port=settings.BACKEND_PORT, reload=should_reload)

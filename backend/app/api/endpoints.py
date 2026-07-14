@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query, Security, Request, status
+from fastapi.security import HTTPBearer, APIKeyHeader, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional, Dict, Any
@@ -16,9 +17,27 @@ from app.schemas.schemas import (
 from app.services.simulation import stadium_sim, ALL_NODES
 from app.services.route_engine import RouteEngine
 from app.services.gemini_service import GeminiService
+from app.core.limiter import limiter
 
 router = APIRouter()
 gemini = GeminiService()
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+bearer_scheme = HTTPBearer(auto_error=False)
+
+async def verify_api_key(
+    api_key: Optional[str] = Security(api_key_header),
+    bearer: Optional[HTTPAuthorizationCredentials] = Security(bearer_scheme)
+):
+    from app.core.config import settings
+    expected_key = settings.GUARDIAN_API_KEY
+    token = api_key or (bearer.credentials if bearer else None)
+    if not token or token != expected_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key or bearer token"
+        )
+    return token
 
 # ----------------------------------------------------
 # WebSocket Endpoint for Live Telemetry
@@ -47,7 +66,9 @@ async def websocket_endpoint(websocket: WebSocket):
 # ----------------------------------------------------
 @router.get("/incidents", response_model=List[IncidentResponse])
 async def get_incidents(
-    status: Optional[str] = None, 
+    status: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=100, description="Max number of incidents to return"),
+    offset: int = Query(0, ge=0, description="Number of incidents to skip"),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -59,14 +80,15 @@ async def get_incidents(
             raise HTTPException(status_code=400, detail="Invalid incident status value")
         query = query.where(Incident.status == status)
     
-    query = query.order_by(Incident.created_at.desc())
+    query = query.order_by(Incident.created_at.desc()).offset(offset).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
 
 @router.post("/incidents", response_model=IncidentResponse)
 async def create_incident(
     incident_in: IncidentCreate, 
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(verify_api_key)
 ):
     """
     Manual reporting of a security or medical incident.
@@ -109,14 +131,15 @@ async def create_incident(
     await db.refresh(new_incident)
     
     # Broadcast update via WebSockets
-    await stadium_sim.broadcast({"event": "incident_created", "incident": IncidentResponse.from_orm(new_incident).dict()})
+    await stadium_sim.broadcast({"event": "incident_created", "incident": IncidentResponse.model_validate(new_incident).model_dump(mode="json")})
     return new_incident
 
 @router.put("/incidents/{incident_id}", response_model=IncidentResponse)
 async def update_incident(
     incident_id: int, 
     incident_in: IncidentUpdate, 
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(verify_api_key)
 ):
     """
     Updates incident status, response crews, or resolves an active emergency.
@@ -136,14 +159,16 @@ async def update_incident(
     await db.refresh(db_incident)
     
     # Trigger broadcast update
-    await stadium_sim.broadcast({"event": "incident_updated", "incident": IncidentResponse.from_orm(db_incident).dict()})
+    await stadium_sim.broadcast({"event": "incident_updated", "incident": IncidentResponse.model_validate(db_incident).model_dump(mode="json")})
     return db_incident
 
 # ----------------------------------------------------
 # Crowd Prediction Endpoints
 # ----------------------------------------------------
 @router.get("/crowd/predictions", response_model=CrowdPredictionResponse)
+@limiter.limit("10/minute")
 async def get_crowd_predictions(
+    request: Request,
     zone: str = Query(..., description="Target stadium zone for forecasting"),
     db: AsyncSession = Depends(get_db)
 ):
@@ -175,15 +200,18 @@ async def get_crowd_predictions(
 # AI Copilot Decision Endpoint
 # ----------------------------------------------------
 @router.post("/copilot", response_model=CopilotResponse)
+@limiter.limit("10/minute")
 async def ask_copilot(
-    request: CopilotRequest, 
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    copilot_request: CopilotRequest, 
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(verify_api_key)
 ):
     """
     Operations Command Decision Copilot. Ask questions about stadium logistics,
     safety risks, resource planning, and evacuation routing.
     """
-    if not request.query or not request.query.strip():
+    if not copilot_request.query or not copilot_request.query.strip():
         raise HTTPException(status_code=400, detail="Query text cannot be empty")
     # Fetch active incidents
     stmt = select(Incident).where(Incident.status == "active")
@@ -206,14 +234,14 @@ async def ask_copilot(
     }
     
     response = gemini.copilot_chat(
-        query=request.query,
+        query=copilot_request.query,
         stadium_state_summary=stadium_state_summary,
-        history=request.history or []
+        history=copilot_request.history or []
     )
     
     # Persist the copilot query log asynchronously
     query_record = CopilotQuery(
-        query=request.query,
+        query=copilot_request.query,
         response=response.answer,
         context_state=stadium_state_summary
     )
@@ -227,17 +255,18 @@ async def ask_copilot(
 # ----------------------------------------------------
 @router.post("/routes", response_model=RouteResponse)
 async def calculate_route(
-    request: RouteRequest, 
-    db: AsyncSession = Depends(get_db)
+    route_request: RouteRequest, 
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(verify_api_key)
 ):
     """
     Calculates safety-optimized routes avoiding incidents and high-density bottlenecks.
     Supports accessibility parameters and emergency responder tunnels.
     """
-    if request.start_node not in ALL_NODES:
-        raise HTTPException(status_code=400, detail=f"Invalid starting node: {request.start_node}")
-    if request.end_node not in ALL_NODES:
-        raise HTTPException(status_code=400, detail=f"Invalid destination node: {request.end_node}")
+    if route_request.start_node not in ALL_NODES:
+        raise HTTPException(status_code=400, detail=f"Invalid starting node: {route_request.start_node}")
+    if route_request.end_node not in ALL_NODES:
+        raise HTTPException(status_code=400, detail=f"Invalid destination node: {route_request.end_node}")
     # Fetch active incidents
     stmt = select(Incident).where(Incident.status == "active")
     result = await db.execute(stmt)
@@ -248,12 +277,12 @@ async def calculate_route(
     
     # Run route Dijkstra calculator
     route = RouteEngine.calculate_route(
-        start=request.start_node,
-        end=request.end_node,
+        start=route_request.start_node,
+        end=route_request.end_node,
         crowd_densities=stadium_sim.densities,
         active_incidents=active_incidents,
-        accessibility_required=request.accessibility_required,
-        emergency_vehicle=request.emergency_vehicle
+        accessibility_required=route_request.accessibility_required,
+        emergency_vehicle=route_request.emergency_vehicle
     )
     return route
 
@@ -261,7 +290,9 @@ async def calculate_route(
 # AI Executive Situation Report
 # ----------------------------------------------------
 @router.get("/reports/situation", response_model=ExecutiveSummaryReport)
+@limiter.limit("10/minute")
 async def get_situation_report(
+    request: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """

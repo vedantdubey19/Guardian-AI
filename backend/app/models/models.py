@@ -14,8 +14,8 @@ class Incident(Base):
     description = Column(Text)
     affected_zones = Column(JSON)  # List of zones, e.g. ["Zone A", "Zone B"]
     action_plan = Column(JSON)  # Detailed AI generated response steps
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)
+    updated_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), onupdate=lambda: datetime.datetime.now(datetime.timezone.utc))
     resolved_at = Column(DateTime, nullable=True)
     responders_dispatched = Column(Integer, default=0)
 
@@ -23,7 +23,7 @@ class CrowdState(Base):
     __tablename__ = "crowd_states"
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)
     zone_data = Column(JSON)  # Dict mapping zone names to detail dicts (density, count, risk, etc.)
     overall_risk_score = Column(Float)
     overall_confidence = Column(Float)
@@ -36,4 +36,4 @@ class CopilotQuery(Base):
     query = Column(Text)
     response = Column(Text)
     context_state = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)

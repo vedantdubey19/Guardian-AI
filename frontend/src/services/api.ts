@@ -51,7 +51,10 @@ export const api = {
   }): Promise<Incident> {
     const response = await fetch(`${API_BASE}/incidents`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-API-Key': process.env.NEXT_PUBLIC_GUARDIAN_API_KEY || 'guardian-admin-secret'
+      },
       body: JSON.stringify(incident),
     });
     return handleResponse<Incident>(response);
@@ -69,7 +72,10 @@ export const api = {
   ): Promise<Incident> {
     const response = await fetch(`${API_BASE}/incidents/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-API-Key': process.env.NEXT_PUBLIC_GUARDIAN_API_KEY || 'guardian-admin-secret'
+      },
       body: JSON.stringify(update),
     });
     return handleResponse<Incident>(response);
@@ -87,7 +93,10 @@ export const api = {
   async askCopilot(query: string, history: { role: 'user' | 'assistant'; content: string }[] = []): Promise<CopilotResponse> {
     const response = await fetch(`${API_BASE}/copilot`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-API-Key': process.env.NEXT_PUBLIC_GUARDIAN_API_KEY || 'guardian-admin-secret'
+      },
       body: JSON.stringify({ query, history }),
     });
     return handleResponse<CopilotResponse>(response);
@@ -102,7 +111,10 @@ export const api = {
   }): Promise<RouteResponse> {
     const response = await fetch(`${API_BASE}/routes`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-API-Key': process.env.NEXT_PUBLIC_GUARDIAN_API_KEY || 'guardian-admin-secret'
+      },
       body: JSON.stringify(params),
     });
     return handleResponse<RouteResponse>(response);

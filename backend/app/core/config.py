@@ -6,6 +6,8 @@ from pydantic import computed_field
 
 class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
+    GUARDIAN_API_KEY: str = "guardian-admin-secret"
+    ENVIRONMENT: str = "dev"
     
     # Supabase credentials (SUPABASE_URL in .env is the postgres connection string,
     # and SUPABASE_Publishable_URL is the HTTP API URL)

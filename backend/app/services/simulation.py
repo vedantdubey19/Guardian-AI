@@ -80,7 +80,7 @@ class StadiumSimulation:
         overall_confidence = max(55.0, 95.0 - (high_density_count * 2.0))
         
         return {
-            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "densities": self.densities,
             "counts": self.counts,
             "responders": self.responders,
@@ -337,7 +337,7 @@ class StadiumSimulation:
                     db_inc = await session.get(Incident, inc.id)
                     if db_inc:
                         db_inc.status = "resolved"
-                        db_inc.resolved_at = datetime.datetime.utcnow()
+                        db_inc.resolved_at = datetime.datetime.now(datetime.timezone.utc)
                         await session.commit()
                         logger.info(f"Simulated incident resolved: {inc.type} in {inc.zone}")
                         

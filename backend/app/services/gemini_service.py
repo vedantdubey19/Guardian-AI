@@ -4,6 +4,11 @@ import logging
 import datetime
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
+# DEPRECATED: google.generativeai is deprecated.
+# Migration path: Switch to the google.genai package:
+#     from google import genai
+#     client = genai.Client()
+#     response = client.models.generate_content(...)
 import google.generativeai as genai
 from google.generativeai.types import GenerateContentResponse
 from app.core.config import settings
@@ -149,7 +154,7 @@ class GeminiService:
             ))
             
         return CrowdPredictionResponse(
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
             zone=zone,
             predictions=predictions
         )
@@ -410,7 +415,7 @@ class GeminiService:
             ]
 
         return ExecutiveSummaryReport(
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
             executive_summary=exec_summary,
             current_issues_summary=current_issues,
             predicted_issues_summary=predicted_issues,

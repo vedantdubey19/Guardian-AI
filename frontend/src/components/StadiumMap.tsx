@@ -147,6 +147,8 @@ export const StadiumMap: React.FC<StadiumMapProps> = ({
       <svg
         viewBox="0 0 800 600"
         className="w-full h-full select-none"
+        aria-label="FIFA World Cup 2026 Stadium Map"
+        role="img"
         onClick={() => {
           if (onNodeClick) onNodeClick('');
         }}
@@ -445,8 +447,8 @@ export const StadiumMap: React.FC<StadiumMapProps> = ({
           }}
         >
           <div className="font-bold text-[#00f2fe] flex items-center gap-1.5">
-            {MAP_NODES[hoveredNode].type === 'gate' && <Shield className="w-3.5 h-3.5" />}
-            {MAP_NODES[hoveredNode].type === 'zone' && <Activity className="w-3.5 h-3.5" />}
+            {MAP_NODES[hoveredNode].type === 'gate' && <Shield className="w-3.5 h-3.5" aria-hidden="true" />}
+            {MAP_NODES[hoveredNode].type === 'zone' && <Activity className="w-3.5 h-3.5" aria-hidden="true" />}
             {hoveredNode}
           </div>
           <div className="flex justify-between gap-6 mt-1 text-[10px]">
@@ -463,7 +465,7 @@ export const StadiumMap: React.FC<StadiumMapProps> = ({
           </div>
           {activeIncidents.some((i) => i.zone === hoveredNode && i.status !== 'resolved') && (
             <div className="mt-1.5 pt-1 border-t border-slate-800 text-[10px] text-rose-400 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3 text-rose-500" />
+              <AlertTriangle className="w-3 h-3 text-rose-500" aria-hidden="true" />
               Active Incident Alert
             </div>
           )}

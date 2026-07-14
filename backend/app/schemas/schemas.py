@@ -1,5 +1,5 @@
 import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Dict, Optional, Any
 
 class ActionPlanStep(BaseModel):
@@ -36,8 +36,7 @@ class IncidentResponse(IncidentBase):
     resolved_at: Optional[datetime.datetime] = None
     responders_dispatched: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ZoneState(BaseModel):
     density: float  # 0.0 to 1.0
@@ -56,8 +55,7 @@ class CrowdStateResponse(BaseModel):
     overall_confidence: float
     summary: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PredictionItem(BaseModel):
     time_horizon_minutes: int  # 5, 10, 20, 30
